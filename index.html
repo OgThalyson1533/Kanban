@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LIFE CONTROL — Sistema de Domínio Total</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;700;900&family=JetBrains+Mono:wght@300;400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Stylesheets (order matters) -->
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/navigation.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/views.css" />
+  <link rel="stylesheet" href="css/features.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#00d4ff" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <!-- Anti-FOUC: apply saved theme before first paint -->
+  <script>
+    (function(){
+      var t = localStorage.getItem('lc_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     PARTICLE CANVAS
+     ═══════════════════════════════════════════════════════ -->
+<canvas id="particle-canvas"></canvas>
+
+<!-- Sidebar overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="window._toggleSidebar()"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TOAST NOTIFICATIONS
+     ═══════════════════════════════════════════════════════ -->
+<div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     JACKPOT OVERLAY
+     ═══════════════════════════════════════════════════════ -->
+<div class="jackpot-overlay" id="jackpotOverlay" onclick="window._closeJackpot()" role="dialog" aria-modal="true">
+  <div class="jackpot-box">
+    <div class="jackpot-title" id="jackpotTitle">JACKPOT!</div>
+    <div class="jackpot-sub"   id="jackpotSub">META CONCLUÍDA</div>
+    <div class="jackpot-xp"    id="jackpotXP">+500 XP</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     AUTH SCREEN (Login / Register / Config)
+     ═══════════════════════════════════════════════════════ -->
+<div id="authScreen" style="display:none">
+  <div class="auth-bg">
+    <canvas id="auth-canvas"></canvas>
+    <div class="auth-noise"></div>
+  </div>
+
+  <div class="auth-shell">
+
+    <!-- Logo / Brand -->
+    <div class="auth-brand">
+      <div class="auth-brand__dot"></div>
+      <span class="auth-brand__name">LIFE CONTROL</span>
+    </div>
+    <p class="auth-brand__tagline">// SISTEMA DE DOMÍNIO TOTAL</p>
+
+    <!-- Step 1: Supabase Credentials -->
+    <div id="auth-step-config" class="auth-card">
+      <div class="auth-card__header">
+        <span class="auth-card__icon">⚡</span>
+        <div>
+          <div class="auth-card__title">CONFIGURAR PROJETO</div>
+          <div class="auth-card__sub">Cole as credenciais do seu Supabase</div>
+        </div>
+      </div>
+      <div class="auth-fields">
+        <div class="auth-field">
+          <label class="auth-label" for="sbUrl">PROJECT URL</label>
+          <input class="auth-input" id="sbUrl" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="auth-field">
+          <label class="auth-label" for="sbKey">ANON KEY</label>
+          <input class="auth-input" id="sbKey" type="text" placeholder="eyJhbGciOiJIUzI1NiIs..." autocomplete="off" spellcheck="false" />
+        </div>
+      </div>
+      <div id="auth-config-error" class="auth-error" style="display:none"></div>
+      <button class="auth-btn auth-btn--primary" id="btnConnect" onclick="window._authConnect()">
+        <span>⚡</span> CONECTAR
+      </button>
+      <div class="auth-divider"><span>ou</span></div>
+      <button class="auth-btn auth-btn--ghost" onclick="window._authDemo()">
+        ◈ ENTRAR EM MODO DEMO
+      </button>
+      <div class="auth-help">
+        <a href="#" onclick="window._authToggleSQL(event)" class="auth-link">Ver SQL de configuração →</a>
+        <pre class="auth-sql" id="authSqlBlock" style="display:none">-- Execute no SQL Editor do Supabase:
+
+CREATE TABLE IF NOT EXISTS profiles (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id text UNIQUE,
+  xp integer DEFAULT 0,
+  coins integer DEFAULT 0,
+  level integer DEFAULT 1,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id text,
+  title text NOT NULL,
+  status text DEFAULT 'backlog',
+  priority text DEFAULT 'med',
+  tags text[],
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS habit_tracker (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id text,
+  name text NOT NULL,
+  icon text,
+  streak integer DEFAULT 0,
+  last_check date,
+  quit_mode boolean DEFAULT false,
+  quit_date date,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS finances (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id text,
+  description text NOT NULL,
+  amount numeric NOT NULL,
+  type text CHECK (type IN ('income','expense')),
+  category text,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS goals (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id text,
+  title text NOT NULL,
+  target numeric NOT NULL,
+  current numeric DEFAULT 0,
+  unit text DEFAULT 'pts',
+  color text DEFAULT 'plasma',
+  deadline date,
+  created_at timestamptz DEFAULT now()
+);</pre>
+      </div>
+    </div>
+
+    <!-- Step 2: Login -->
+    <div id="auth-step-login" class="auth-card" style="display:none">
+      <div class="auth-card__header">
+        <span class="auth-card__icon">◈</span>
+        <div>
+          <div class="auth-card__title">ENTRAR</div>
+          <div class="auth-card__sub">Acesse sua conta Life Control</div>
+        </div>
+      </div>
+      <div class="auth-fields">
+        <div class="auth-field">
+          <label class="auth-label" for="loginEmail">E-MAIL</label>
+          <input class="auth-input" id="loginEmail" type="email" placeholder="seu@email.com" autocomplete="email" />
+        </div>
+        <div class="auth-field">
+          <label class="auth-label" for="loginPass">SENHA</label>
+          <input class="auth-input" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+      </div>
+      <div id="auth-login-error" class="auth-error" style="display:none"></div>
+      <button class="auth-btn auth-btn--primary" id="btnLogin" onclick="window._authLogin()">
+        <span>→</span> ENTRAR
+      </button>
+      <div class="auth-divider"><span>ou</span></div>
+      <button class="auth-btn auth-btn--ghost" onclick="window._authShowRegister()">
+        ★ CRIAR CONTA
+      </button>
+      <button class="auth-btn auth-btn--ghost" onclick="window._authDemo()" style="margin-top:4px">
+        ◈ MODO DEMO (sem conta)
+      </button>
+      <div class="auth-footer">
+        <button class="auth-link" onclick="window._authBackToConfig()" style="background:none;border:none;cursor:pointer">
+          ← Trocar projeto Supabase
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: Register -->
+    <div id="auth-step-register" class="auth-card" style="display:none">
+      <div class="auth-card__header">
+        <span class="auth-card__icon">★</span>
+        <div>
+          <div class="auth-card__title">CRIAR CONTA</div>
+          <div class="auth-card__sub">Comece sua jornada de domínio total</div>
+        </div>
+      </div>
+      <div class="auth-fields">
+        <div class="auth-field">
+          <label class="auth-label" for="regName">NOME (opcional)</label>
+          <input class="auth-input" id="regName" type="text" placeholder="Comandante" autocomplete="name" />
+        </div>
+        <div class="auth-field">
+          <label class="auth-label" for="regEmail">E-MAIL</label>
+          <input class="auth-input" id="regEmail" type="email" placeholder="seu@email.com" autocomplete="email" />
+        </div>
+        <div class="auth-field">
+          <label class="auth-label" for="regPass">SENHA</label>
+          <input class="auth-input" id="regPass" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+        </div>
+        <div class="auth-field">
+          <label class="auth-label" for="regPassConfirm">CONFIRMAR SENHA</label>
+          <input class="auth-input" id="regPassConfirm" type="password" placeholder="Repita a senha" autocomplete="new-password" />
+        </div>
+      </div>
+      <div id="auth-register-error" class="auth-error" style="display:none"></div>
+      <button class="auth-btn auth-btn--primary" id="btnRegister" onclick="window._authRegister()">
+        <span>★</span> CRIAR CONTA
+      </button>
+      <div class="auth-divider"><span>ou</span></div>
+      <button class="auth-btn auth-btn--ghost" onclick="window._authShowLogin()">
+        → JÁ TENHO CONTA
+      </button>
+    </div>
+
+    <!-- Version badge -->
+    <div class="auth-version">v4.0 · LIFE CONTROL</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SUPABASE CONFIG MODAL (settings, quando já logado)
+     ═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="configModal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="configTitle">
+  <div class="modal-box">
+    <div class="modal-box__title" id="configTitle">SUPABASE</div>
+    <div class="modal-box__sub">Trocar projeto ou desconectar</div>
+    <div class="modal-box__fields">
+      <div class="form-group">
+        <label class="field-label" for="sbUrlModal">Supabase Project URL</label>
+        <input class="input" id="sbUrlModal" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label class="field-label" for="sbKeyModal">Anon Key (public)</label>
+        <input class="input" id="sbKeyModal" type="text" placeholder="eyJhbGc..." autocomplete="off" />
+      </div>
+    </div>
+    <div class="modal-box__actions">
+      <button class="btn btn--primary" onclick="window._reconnectSupabase()" style="flex:1">⚡ RECONECTAR</button>
+      <button class="btn" onclick="window._authLogout()" style="flex:1;color:var(--ember)">⏻ SAIR</button>
+    </div>
+    <div class="modal-box__actions" style="margin-top:var(--sp-2)">
+      <button class="btn" onclick="window._closeConfigModal()" style="flex:1">FECHAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     APP SHELL
+     ═══════════════════════════════════════════════════════ -->
+<div class="app-shell">
+
+  <!-- ── TOP BAR ───────────────────────────────────────── -->
+  <header class="topbar" role="banner">
+    <div class="topbar__sweep" aria-hidden="true"></div>
+
+    <button class="mobile-topbar-btn" id="hamburgerBtn" aria-label="Menu" onclick="window._toggleSidebar()">☰</button>
+
+    <div class="logo" aria-label="Life Control">
+      <div class="logo__dot" aria-hidden="true"></div>
+      LIFE CONTROL
+    </div>
+
+    <div class="topbar__divider" aria-hidden="true"></div>
+    <div class="level-badge" aria-label="Nível">⬡ LVL <span id="topLevel">1</span></div>
+
+    <div class="topbar__stats">
+      <div class="xp-wrap" aria-label="Experiência">
+        <span>XP</span>
+        <div class="xp-bar" role="progressbar" aria-label="Barra de XP">
+          <div class="xp-bar__fill" id="xpBarFill" style="width: 30%"></div>
+        </div>
+        <span id="topXP" style="color:var(--plasma); font-family:var(--font-mono); font-size:12px; font-weight:700">300</span>
+      </div>
+      <div class="stat-chip">🪙 <span class="stat-chip__val stat-chip__val--gold" id="topCoins">0</span></div>
+      <div class="stat-chip">🔥 <span class="stat-chip__val" id="topStreak">0</span> <span style="font-size:10px">DIA</span></div>
+      <div class="conn-status">
+        <div class="conn-status__dot" id="statusDot"></div>
+        <span id="statusLabel" style="font-family:var(--font-mono); font-size:10px; letter-spacing:1px">OFFLINE</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── SIDEBAR ───────────────────────────────────────── -->
+  <nav class="sidebar" role="navigation" aria-label="Navegação principal">
+
+    <div class="nav-section">SISTEMA</div>
+    <div class="nav-item nav-item--active" onclick="window._nav('dashboard', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">⬡</span>
+      <span class="nav-item__label">Dashboard</span>
+    </div>
+    <div class="nav-item" onclick="window._nav('agenda', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">◈</span>
+      <span class="nav-item__label">Agenda</span>
+    </div>
+
+    <div class="nav-section">PRODUTIVIDADE</div>
+    <div class="nav-item" onclick="window._nav('kanban', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">⊞</span>
+      <span class="nav-item__label">Kanban</span>
+      <span class="nav-item__badge" id="taskBadge">0</span>
+    </div>
+    <div class="nav-item" onclick="window._nav('metas', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">◎</span>
+      <span class="nav-item__label">Metas</span>
+    </div>
+
+    <div class="nav-section">HÁBITOS</div>
+    <div class="nav-item" onclick="window._nav('habitos', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">⬢</span>
+      <span class="nav-item__label">Habit Tracker</span>
+    </div>
+    <div class="nav-item" onclick="window._nav('quit', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">🚫</span>
+      <span class="nav-item__label">Quit Tracker</span>
+    </div>
+    <div class="nav-item" onclick="window._nav('humor', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">😊</span>
+      <span class="nav-item__label">Diário de Humor</span>
+      <span class="nav-item__badge" style="background:var(--gold-dim);color:var(--gold);border-color:var(--gold)">NEW</span>
+    </div>
+    <div class="nav-item" onclick="window._nav('saude', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">💊</span>
+      <span class="nav-item__label">Saúde & Sono</span>
+      <span class="nav-item__badge" style="background:var(--mint-dim);color:var(--mint);border-color:var(--mint)">NEW</span>
+    </div>
+
+    <div class="nav-section">FINANÇAS</div>
+    <div class="nav-item" onclick="window._nav('financas', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">◆</span>
+      <span class="nav-item__label">Fluxo de Caixa</span>
+    </div>
+    <div class="nav-item" onclick="window._nav('cripto', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">⬟</span>
+      <span class="nav-item__label">Criptoativos</span>
+    </div>
+
+    <div class="nav-section">PERFIL</div>
+    <div class="nav-item" onclick="window._nav('recompensas', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">★</span>
+      <span class="nav-item__label">Recompensas</span>
+    </div>
+
+    <div class="nav-section">INSIGHTS</div>
+    <div class="nav-item" onclick="window._nav('analytics', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">◈</span>
+      <span class="nav-item__label">Analytics</span>
+    </div>
+    <div class="nav-item" onclick="window._nav('learning', this)" role="button" tabindex="0">
+      <span class="nav-item__icon" aria-hidden="true">▶</span>
+      <span class="nav-item__label">Learning Hub</span>
+      <span class="nav-item__badge" style="background:var(--gold-dim);color:var(--gold);border-color:var(--gold)">NEW</span>
+    </div>
+
+    <div class="sidebar__spacer"></div>
+    <div class="sidebar__bottom">
+      <!-- Theme Toggle -->
+      <button class="theme-toggle" onclick="window._toggleTheme()" aria-label="Alternar tema claro/escuro">
+        <span class="theme-toggle__icon" aria-hidden="true">☀</span>
+        <span class="theme-toggle__label">LIGHT MODE</span>
+        <div class="theme-toggle__track" aria-hidden="true"></div>
+      </button>
+      <div class="nav-item" onclick="window._showConfigModal()" role="button" tabindex="0">
+        <span class="nav-item__icon" aria-hidden="true">⚙</span>
+        <span class="nav-item__label">Supabase</span>
+      </div>
+      <div class="nav-item" onclick="window._requestNotifications()" role="button" tabindex="0">
+        <span class="nav-item__icon" aria-hidden="true">🔔</span>
+        <span class="nav-item__label">Notificações</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── MAIN ──────────────────────────────────────────── -->
+  <main class="main-content" id="mainContent" role="main">
+
+    <!-- ════════════════ DASHBOARD ════════════════ -->
+    <section class="view view--active" id="view-dashboard" aria-label="Dashboard">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">DASHBOARD</h1>
+          <p class="page-subtitle">// VISÃO GERAL · <span id="dashDate"></span></p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--primary" onclick="window._jackpotDemo()">⚡ JACKPOT DEMO</button>
+        </div>
+      </div>
+
+      <div class="grid-4 mb-7">
+        <div class="metric-card metric-card--plasma">
+          <div class="metric-card__label">TAREFAS ATIVAS</div>
+          <div class="metric-card__value metric-card__value--plasma" id="dash-tasks">0</div>
+          <div class="metric-card__delta" id="dash-tasks-delta">— sem dados</div>
+        </div>
+        <div class="metric-card metric-card--gold">
+          <div class="metric-card__label">MAIOR STREAK</div>
+          <div class="metric-card__value metric-card__value--gold" id="dash-streak">0</div>
+          <div class="metric-card__delta metric-card__delta--up">↑ dias consecutivos</div>
+        </div>
+        <div class="metric-card metric-card--mint">
+          <div class="metric-card__label">SALDO LÍQUIDO</div>
+          <div class="metric-card__value metric-card__value--mint" id="dash-balance">R$0</div>
+          <div class="metric-card__delta" id="dash-balance-delta">— sem transações</div>
+        </div>
+        <div class="metric-card metric-card--ember">
+          <div class="metric-card__label">METAS ATIVAS</div>
+          <div class="metric-card__value metric-card__value--ember" id="dash-goals">0</div>
+          <div class="metric-card__delta">em progresso</div>
+        </div>
+      </div>
+
+      <div class="grid-2 mb-5">
+        <div class="card">
+          <div class="card-header">TAREFAS RECENTES</div>
+          <div id="dash-task-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">HÁBITOS DE HOJE</div>
+          <div id="dash-habit-list"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">PROGRESSO SEMANAL</div>
+        <div class="mini-chart" id="weeklyChart" style="height: 80px; margin-top: var(--sp-3)"></div>
+        <div class="mini-chart__labels">
+          <span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SAB</span><span>DOM</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ AGENDA ════════════════ -->
+    <section class="view" id="view-agenda" aria-label="Agenda">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">AGENDA</h1>
+          <p class="page-subtitle">// CONTROLE DE TEMPO · HOJE</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--primary">+ EVENTO</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">LINHA DO TEMPO — HOJE</div>
+          <div class="time-grid" id="timeGrid"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">PRÓXIMOS EVENTOS</div>
+          <div class="empty-state">Nenhum evento programado.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ KANBAN ════════════════ -->
+    <section class="view" id="view-kanban" aria-label="Kanban">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">KANBAN</h1>
+          <p class="page-subtitle">// GESTÃO AVANÇADA DE TAREFAS</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn" onclick="window._exportKanbanCSV()" style="font-size:10px">⬇ CSV</button>
+          <button class="btn" onclick="window._exportKanbanTXT()" style="font-size:10px">⬇ RELATÓRIO</button>
+          <button class="btn btn--primary" onclick="window._toggleTaskForm()">+ NOVA TAREFA</button>
+        </div>
+      </div>
+
+      <!-- Task Form -->
+      <div class="task-form" id="taskFormArea">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin-bottom:var(--sp-4)">
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="field-label" for="newTaskTitle">Título da Tarefa</label>
+            <input class="input" id="newTaskTitle" type="text" placeholder="Descreva a tarefa…" />
+          </div>
+
+          <!-- Priority icon selector -->
+          <div class="form-group">
+            <label class="field-label">PRIORIDADE</label>
+            <div class="icon-selector" id="priSelector">
+              <button type="button" class="icon-sel-btn icon-sel-btn--high active" data-val="high" onclick="window._setPri('high',this)">
+                <span class="icon-sel-icon">🔴</span><span class="icon-sel-label">ALTA</span>
+              </button>
+              <button type="button" class="icon-sel-btn icon-sel-btn--med" data-val="med" onclick="window._setPri('med',this)">
+                <span class="icon-sel-icon">🟡</span><span class="icon-sel-label">MÉDIA</span>
+              </button>
+              <button type="button" class="icon-sel-btn icon-sel-btn--low" data-val="low" onclick="window._setPri('low',this)">
+                <span class="icon-sel-icon">🟢</span><span class="icon-sel-label">BAIXA</span>
+              </button>
+            </div>
+            <input type="hidden" id="newTaskPriority" value="high">
+          </div>
+
+          <!-- Complexity icon selector -->
+          <div class="form-group">
+            <label class="field-label">COMPLEXIDADE</label>
+            <div class="icon-selector" id="cxSelector">
+              <button type="button" class="icon-sel-btn icon-sel-btn--low active" data-val="low" onclick="window._setCx('low',this)">
+                <span class="icon-sel-icon" style="font-family:var(--font-mono)">◎</span><span class="icon-sel-label">LOW</span>
+              </button>
+              <button type="button" class="icon-sel-btn icon-sel-btn--med" data-val="medium" onclick="window._setCx('medium',this)">
+                <span class="icon-sel-icon" style="font-family:var(--font-mono)">◉</span><span class="icon-sel-label">MED</span>
+              </button>
+              <button type="button" class="icon-sel-btn icon-sel-btn--high" data-val="high" onclick="window._setCx('high',this)">
+                <span class="icon-sel-icon" style="font-family:var(--font-mono)">⬢</span><span class="icon-sel-label">HIGH</span>
+              </button>
+            </div>
+            <input type="hidden" id="newTaskComplexity" value="low">
+          </div>
+
+          <div class="form-group">
+            <label class="field-label" for="newTaskTag">TAG</label>
+            <select class="input select" id="newTaskTag">
+              <option value="work">Work</option>
+              <option value="personal">Personal</option>
+              <option value="health">Health</option>
+              <option value="finance">Finance</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="field-label" for="newTaskEstimate">ESTIMADO (min)</label>
+            <input class="input" id="newTaskEstimate" type="number" placeholder="Ex: 30" value="30" min="5" />
+          </div>
+          <div class="form-group">
+            <label class="field-label" for="newTaskDeadline">DEADLINE (opcional)</label>
+            <input class="input" id="newTaskDeadline" type="datetime-local" />
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn--primary" onclick="window._addTask()">✓ CRIAR TAREFA</button>
+          <button class="btn" onclick="window._toggleTaskForm()">✕ CANCELAR</button>
+        </div>
+      </div>
+
+      <!-- Kanban KPI Bar -->
+      <div class="kanban-kpi-bar">
+        <div class="kanban-intel-kpi" id="kpi-wip">
+          <div class="kanban-intel-kpi__label">WIP</div>
+          <div class="kanban-intel-kpi__val" id="kanban-wip-badge">0/2</div>
+        </div>
+        <div class="kanban-intel-kpi" id="kpi-flow">
+          <div class="kanban-intel-kpi__label">FLUXO</div>
+          <div class="kanban-intel-kpi__val" id="kanban-bottleneck-badge">OK</div>
+        </div>
+        <div class="kanban-intel-kpi" id="kpi-score">
+          <div class="kanban-intel-kpi__label">SCORE MÉDIO</div>
+          <div class="kanban-intel-kpi__val" id="kanban-avg-score">—</div>
+        </div>
+        <div class="kanban-intel-kpi" id="kpi-ontime">
+          <div class="kanban-intel-kpi__label">NO PRAZO</div>
+          <div class="kanban-intel-kpi__val" id="kanban-ontime">—</div>
+        </div>
+        <div class="kanban-intel-kpi" id="kpi-medals">
+          <div class="kanban-intel-kpi__label">MEDALHAS</div>
+          <div class="kanban-intel-kpi__val" id="kanban-medals">🏅 0</div>
+        </div>
+        <div class="kanban-intel-kpi" id="kpi-total">
+          <div class="kanban-intel-kpi__label">CONCLUÍDAS</div>
+          <div class="kanban-intel-kpi__val" id="kanban-total-done">0</div>
+        </div>
+      </div>
+
+      <!-- Kanban Board — 6 columns -->
+      <div class="kanban-board kanban-board--6col" id="kanbanBoard">
+
+        <div class="kanban-col">
+          <div class="kanban-col__header">
+            <span class="kanban-col__num">01</span>
+            <span style="color:var(--text-muted)">BACKLOG</span>
+            <span class="kanban-col__count" id="count-backlog">0</span>
+          </div>
+          <div class="kanban-col__body" id="col-backlog"
+               ondragover="window._dragOver(event)"
+               ondrop="window._drop(event,'backlog')"
+               ondragleave="window._dragLeave(event)">
+          </div>
+        </div>
+
+        <div class="kanban-col">
+          <div class="kanban-col__header">
+            <span class="kanban-col__num">02</span>
+            <span style="color:var(--plasma)">PRÓXIMAS</span>
+            <span class="kanban-col__count" id="count-next">0</span>
+          </div>
+          <div class="kanban-col__body" id="col-next"
+               ondragover="window._dragOver(event)"
+               ondrop="window._drop(event,'next')"
+               ondragleave="window._dragLeave(event)">
+          </div>
+        </div>
+
+        <div class="kanban-col">
+          <div class="kanban-col__header">
+            <span class="kanban-col__num">03</span>
+            <span style="color:var(--plasma)">EM EXECUÇÃO</span>
+            <span class="kanban-col__count" id="count-doing">0</span>
+            <span class="kanban-col__wip-tag" id="doing-wip-tag">WIP 2</span>
+          </div>
+          <div class="kanban-col__body" id="col-doing"
+               ondragover="window._dragOver(event)"
+               ondrop="window._drop(event,'doing')"
+               ondragleave="window._dragLeave(event)">
+          </div>
+        </div>
+
+        <div class="kanban-col">
+          <div class="kanban-col__header">
+            <span class="kanban-col__num">04</span>
+            <span style="color:var(--ember)">BLOQUEADO 🚫</span>
+            <span class="kanban-col__count" id="count-blocked">0</span>
+          </div>
+          <div class="kanban-col__body" id="col-blocked"
+               ondragover="window._dragOver(event)"
+               ondrop="window._drop(event,'blocked')"
+               ondragleave="window._dragLeave(event)">
+          </div>
+        </div>
+
+        <div class="kanban-col">
+          <div class="kanban-col__header">
+            <span class="kanban-col__num">05</span>
+            <span style="color:var(--gold)">REVISÃO</span>
+            <span class="kanban-col__count" id="count-review">0</span>
+          </div>
+          <div class="kanban-col__body" id="col-review"
+               ondragover="window._dragOver(event)"
+               ondrop="window._drop(event,'review')"
+               ondragleave="window._dragLeave(event)">
+          </div>
+        </div>
+
+        <div class="kanban-col">
+          <div class="kanban-col__header">
+            <span class="kanban-col__num">06</span>
+            <span style="color:var(--mint)">CONCLUÍDO ✓</span>
+            <span class="kanban-col__count" id="count-done">0</span>
+          </div>
+          <div class="kanban-col__body" id="col-done"
+               ondragover="window._dragOver(event)"
+               ondrop="window._drop(event,'done')"
+               ondragleave="window._dragLeave(event)">
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ════════════════ METAS ════════════════ -->
+    <section class="view" id="view-metas" aria-label="Metas">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">METAS</h1>
+          <p class="page-subtitle">// OBJETIVOS & PROGRESSO</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--primary" onclick="window._addGoal()">+ META</button>
+        </div>
+      </div>
+      <div id="goalsList"></div>
+    </section>
+
+    <!-- ════════════════ HABITOS ════════════════ -->
+    <section class="view" id="view-habitos" aria-label="Habit Tracker">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">HABIT TRACKER</h1>
+          <p class="page-subtitle">// CONSISTÊNCIA É PODER</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--primary" onclick="window._addHabit()">+ HÁBITO</button>
+        </div>
+      </div>
+      <div class="habit-list" id="habitList"></div>
+    </section>
+
+    <!-- ════════════════ QUIT TRACKER ════════════════ -->
+    <section class="view" id="view-quit" aria-label="Quit Tracker">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">QUIT TRACKER</h1>
+          <p class="page-subtitle">// SUPERAÇÃO DE VÍCIOS · MODO BATALHA</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--primary" onclick="window._addQuitHabit()">+ ADICIONAR VÍCIO</button>
+        </div>
+      </div>
+      <div class="grid-2" id="quitList"></div>
+    </section>
+
+    <!-- ════════════════ HUMOR ════════════════ -->
+    <section class="view" id="view-humor" aria-label="Diário de Humor">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">DIÁRIO DE HUMOR</h1>
+          <p class="page-subtitle">// ESTADO EMOCIONAL & ENERGIA VITAL</p>
+        </div>
+      </div>
+      <div id="moodView"></div>
+    </section>
+
+    <!-- ════════════════ SAÚDE ════════════════ -->
+    <section class="view" id="view-saude" aria-label="Saúde & Sono">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">SAÚDE & SONO</h1>
+          <p class="page-subtitle">// MONITORAMENTO BIOMÉTRICO DIÁRIO</p>
+        </div>
+      </div>
+      <div id="healthView"></div>
+    </section>
+
+    <!-- ════════════════ FINANÇAS ════════════════ -->
+    <section class="view" id="view-financas" aria-label="Finanças">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">FINANÇAS</h1>
+          <p class="page-subtitle">// CONTROLE FINANCEIRO COMPLETO</p>
+        </div>
+      </div>
+      <div id="financasRoot"></div>
+    </section>
+
+    <!-- ════════════════ CRIPTOATIVOS ════════════════ -->
+    <section class="view" id="view-cripto" aria-label="Criptoativos">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">CRIPTOATIVOS</h1>
+          <p class="page-subtitle">// PORTFÓLIO DIGITAL</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--primary">+ POSIÇÃO</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">PORTFÓLIO</div>
+          <div id="cryptoPortfolio"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">NOTA</div>
+          <div class="empty-state">
+            Conecte uma API de preços (CoinGecko, Binance) para preços em tempo real.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════ RECOMPENSAS ════════════════ -->
+    <section class="view" id="view-recompensas" aria-label="Recompensas">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">RECOMPENSAS</h1>
+          <p class="page-subtitle">// DISCIPLINE = DOPAMINE · SISTEMA DE GAMIFICAÇÃO</p>
+        </div>
+      </div>
+
+      <div class="reward-banner mb-5">
+        <div class="reward-banner__coin" aria-hidden="true">🪙</div>
+        <div>
+          <div class="reward-banner__val" id="rewardCoins">0</div>
+          <div class="reward-banner__label">LIFE COINS</div>
+        </div>
+        <div class="ml-auto" style="text-align:right">
+          <div class="reward-banner__xp-val" id="rewardXP">0</div>
+          <div class="reward-banner__xp-label">TOTAL XP</div>
+        </div>
+      </div>
+
+      <div class="grid-3 mb-6">
+        <div class="card card--mint">
+          <div class="card-header">TAREFA CONCLUÍDA</div>
+          <div style="font-family:var(--font-display); font-size:32px; font-weight:900; color:var(--mint)">+50 XP</div>
+          <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:var(--sp-2)">+10 🪙 por tarefa alta prioridade</div>
+        </div>
+        <div class="card card--plasma">
+          <div class="card-header">HÁBITO DIÁRIO</div>
+          <div style="font-family:var(--font-display); font-size:32px; font-weight:900; color:var(--plasma)">+30 XP</div>
+          <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:var(--sp-2)">+20 🪙 a cada 7 dias streak</div>
+        </div>
+        <div class="card card--gold">
+          <div class="card-header">META BATIDA</div>
+          <div style="font-family:var(--font-display); font-size:32px; font-weight:900; color:var(--gold)">+500 XP</div>
+          <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:var(--sp-2)">JACKPOT 🎰 animação ativada</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">CONQUISTAS</div>
+        <div class="achievement-grid" id="achievementsList" style="margin-top: var(--sp-3)"></div>
+      </div>
+    </section>
+
+    <!-- ════════════════ ANALYTICS ════════════════ -->
+    <section class="view" id="view-analytics" aria-label="Analytics">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">ANALYTICS</h1>
+          <p class="page-subtitle">// INSIGHTS · PROGRESSO · PADRÕES</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn" onclick="window._refreshAnalytics()" style="font-size:11px">↺ ATUALIZAR</button>
+        </div>
+      </div>
+
+      <!-- Summary chips -->
+      <div class="analytics-summary" id="analyticsSummary">
+        <div class="summary-chip">
+          <span class="summary-chip__icon">⚡</span>
+          <span class="summary-chip__val" id="a-xp">—</span>
+          <span class="summary-chip__label">Total XP</span>
+        </div>
+        <div class="summary-chip">
+          <span class="summary-chip__icon">🔥</span>
+          <span class="summary-chip__val" id="a-streak">—</span>
+          <span class="summary-chip__label">Streak</span>
+        </div>
+        <div class="summary-chip">
+          <span class="summary-chip__icon">✓</span>
+          <span class="summary-chip__val" id="a-tasks">—</span>
+          <span class="summary-chip__label">Tasks</span>
+        </div>
+        <div class="summary-chip">
+          <span class="summary-chip__icon">💰</span>
+          <span class="summary-chip__val" id="a-balance">—</span>
+          <span class="summary-chip__label">Saldo</span>
+        </div>
+      </div>
+
+      <!-- Charts grid -->
+      <div class="analytics-grid">
+        <div class="analytics-card">
+          <div class="analytics-card__title">XP — últimos 14 dias</div>
+          <canvas id="chart-xp"></canvas>
+        </div>
+        <div class="analytics-card">
+          <div class="analytics-card__title">Hábitos — streak atual</div>
+          <canvas id="chart-habits"></canvas>
+        </div>
+        <div class="analytics-card">
+          <div class="analytics-card__title">Despesas por categoria</div>
+          <canvas id="chart-finance"></canvas>
+        </div>
+        <div class="analytics-card">
+          <div class="analytics-card__title">Progresso das metas</div>
+          <div id="chart-goals"></div>
+        </div>
+      </div>
+
+      <!-- Week over Week -->
+      <div class="analytics-card" style="margin-top:var(--sp-4)">
+        <div class="analytics-card__title">ESTA SEMANA vs ANTERIOR</div>
+        <div id="analytics-wow" style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-3);margin-top:var(--sp-3)"></div>
+      </div>
+
+      <!-- Productivity Heatmap -->
+      <div class="analytics-card" style="margin-top:var(--sp-4)">
+        <div class="analytics-card__title">HEATMAP DE PRODUTIVIDADE — 4 SEMANAS</div>
+        <div id="analytics-heatmap" style="margin-top:var(--sp-3)"></div>
+      </div>
+
+      <!-- Export -->
+      <div style="display:flex;gap:var(--sp-3);margin-top:var(--sp-5)">
+        <button class="btn btn--primary" onclick="window._exportJSON()">⬇ EXPORTAR JSON</button>
+        <button class="btn" onclick="window._exportCSV()">⬇ EXPORTAR CSV (tasks)</button>
+      </div>
+    </section>
+
+    <!-- ════════════════ LEARNING HUB ════════════════ -->
+    <section class="view" id="view-learning" aria-label="Learning Hub">
+      <div class="page-header">
+        <div class="page-header__left">
+          <h1 class="page-title">LEARNING HUB</h1>
+          <p class="page-subtitle">// CONHECIMENTO · EVOLUÇÃO · +XP POR VÍDEO</p>
+        </div>
+        <div class="page-header__actions">
+          <button class="btn btn--primary" onclick="window._addVideo()">+ VÍDEO</button>
+        </div>
+      </div>
+
+      <div class="learning-header-banner">
+        <div class="learning-header-banner__title">APRENDA. EVOLUA. DOMINE.</div>
+        <div class="learning-header-banner__sub">// CADA VÍDEO ASSISTIDO CONCEDE +25 XP · CONECTE VÍDEOS A SUAS METAS</div>
+      </div>
+
+      <!-- Filter categories -->
+      <div class="learning-cats" id="learningCats">
+        <div class="learning-cat learning-cat--active" onclick="window._filterVideos('all', this)" data-cat="all">⬡ Todos</div>
+        <div class="learning-cat" onclick="window._filterVideos('produtividade', this)" data-cat="produtividade">◈ Produtividade</div>
+        <div class="learning-cat" onclick="window._filterVideos('financas', this)" data-cat="financas">◆ Finanças</div>
+        <div class="learning-cat" onclick="window._filterVideos('saude', this)" data-cat="saude">⬢ Saúde</div>
+        <div class="learning-cat" onclick="window._filterVideos('tech', this)" data-cat="tech">⊞ Tech</div>
+        <div class="learning-cat" onclick="window._filterVideos('mindset', this)" data-cat="mindset">◎ Mindset</div>
+      </div>
+
+      <div class="learning-grid" id="learningGrid"></div>
+    </section>
+
+    <!-- Add Video Modal -->
+    <div class="modal-overlay" id="addVideoModal" style="display:none" role="dialog" aria-modal="true">
+      <div class="modal-box">
+        <div class="modal-box__title">ADICIONAR VÍDEO</div>
+        <div class="modal-box__sub">Cole a URL do YouTube ou Vimeo</div>
+        <div class="modal-box__fields">
+          <div class="form-group">
+            <label class="field-label" for="vidUrl">URL do Vídeo</label>
+            <input class="input" id="vidUrl" type="url" placeholder="https://youtube.com/watch?v=..." />
+          </div>
+          <div class="form-group">
+            <label class="field-label" for="vidTitle">Título</label>
+            <input class="input" id="vidTitle" type="text" placeholder="Nome do vídeo" />
+          </div>
+          <div class="form-group">
+            <label class="field-label" for="vidCat">Categoria</label>
+            <select class="input" id="vidCat">
+              <option value="produtividade">Produtividade</option>
+              <option value="financas">Finanças</option>
+              <option value="saude">Saúde</option>
+              <option value="tech">Tech</option>
+              <option value="mindset">Mindset</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-box__actions">
+          <button class="btn btn--primary" onclick="window._saveVideo()" style="flex:1">+ ADICIONAR</button>
+          <button class="btn" onclick="window._closeVideoModal()" style="flex:1">CANCELAR</button>
+        </div>
+      </div>
+    </div>
+
+  </main><!-- /main-content -->
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="mobile-nav" id="mobileNav" role="navigation" aria-label="Navegação mobile">
+    <div class="mobile-nav__item mobile-nav__item--active" id="mn-dashboard" onclick="window._nav('dashboard',null); window._setMobileActive('dashboard')">
+      <span class="mobile-nav__icon">⬡</span>
+      <span class="mobile-nav__label">Home</span>
+    </div>
+    <div class="mobile-nav__item" id="mn-kanban" onclick="window._nav('kanban',null); window._setMobileActive('kanban')">
+      <span class="mobile-nav__icon">⊞</span>
+      <span class="mobile-nav__label">Tasks</span>
+    </div>
+    <div class="mobile-nav__item" id="mn-habitos" onclick="window._nav('habitos',null); window._setMobileActive('habitos')">
+      <span class="mobile-nav__icon">⬢</span>
+      <span class="mobile-nav__label">Hábitos</span>
+    </div>
+    <div class="mobile-nav__item" id="mn-analytics" onclick="window._nav('analytics',null); window._setMobileActive('analytics')">
+      <span class="mobile-nav__icon">◈</span>
+      <span class="mobile-nav__label">Stats</span>
+    </div>
+    <div class="mobile-nav__item" id="mn-humor" onclick="window._nav('humor',null); window._setMobileActive('humor')">
+      <span class="mobile-nav__icon">😊</span>
+      <span class="mobile-nav__label">Humor</span>
+    </div>
+    <div class="mobile-nav__item" id="mn-saude" onclick="window._nav('saude',null); window._setMobileActive('saude')">
+      <span class="mobile-nav__icon">💊</span>
+      <span class="mobile-nav__label">Saúde</span>
+    </div>
+    <div class="mobile-nav__item" id="mn-learning" onclick="window._nav('learning',null); window._setMobileActive('learning')">
+      <span class="mobile-nav__icon">▶</span>
+      <span class="mobile-nav__label">Learn</span>
+    </div>
+  </nav>
+
+</div><!-- /app-shell -->
+
+<!-- ── Pomodoro Widget ──────────────────────────────────── -->
+<div id="pomodoroWidget" class="pomodoro-widget"></div>
+
+<!-- ── Task Detail Modal ───────────────────────────────── -->
+<div class="modal-overlay" id="taskDetailModal" style="display:none" onclick="if(event.target===this)window._closeTaskDetail()"></div>
+
+<!-- ── Finance Modal ───────────────────────────────────── -->
+<div class="modal-overlay" id="finModal" style="display:none" onclick="if(event.target===this)window._closeFinModal()"></div>
+
+<!-- ── App Entry ──────────────────────────────────────────── -->
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>

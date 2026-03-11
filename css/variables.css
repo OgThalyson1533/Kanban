@@ -1,0 +1,127 @@
+/* ═══════════════════════════════════════════════════════════
+   LIFE CONTROL — Design Tokens
+   Philosophy: "Orbital Precision"
+   Two modes — Void Dark (SpaceX) / Lunar Parchment (editorial)
+   Both executed with master-level craftsmanship.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── DARK MODE (default) ────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --void:        #020408;
+  --deep:        #050c14;
+  --surface:     #081018;
+  --panel:       #0c1824;
+  --panel-hi:    #101f2e;
+  --overlay:     rgba(2, 4, 8, 0.93);
+
+  --border:      #152030;
+  --border-hi:   #1e3048;
+  --border-glow: #264860;
+
+  --plasma:      #00d4ff;
+  --plasma-dim:  rgba(0, 212, 255, 0.10);
+  --plasma-mid:  rgba(0, 212, 255, 0.22);
+  --plasma-glow: rgba(0, 212, 255, 0.40);
+
+  --gold:        #f5c842;
+  --gold-dim:    rgba(245, 200, 66, 0.12);
+  --gold-mid:    rgba(245, 200, 66, 0.25);
+  --gold-glow:   rgba(245, 200, 66, 0.40);
+
+  --mint:        #00d97e;
+  --mint-dim:    rgba(0, 217, 126, 0.09);
+  --mint-mid:    rgba(0, 217, 126, 0.20);
+  --mint-glow:   rgba(0, 217, 126, 0.36);
+
+  --ember:       #ff4d1a;
+  --ember-dim:   rgba(255, 77, 26, 0.10);
+  --ember-mid:   rgba(255, 77, 26, 0.22);
+
+  --text:        #c8dce8;
+  --text-muted:  #4a6a7a;
+  --text-ghost:  #1e3040;
+
+  --scanline-color: rgba(0, 212, 255, 0.013);
+  --noise-opacity:  0.03;
+  --shadow-card:    0 2px 16px rgba(0,0,0,0.5);
+  --shadow-panel:   0 4px 32px rgba(0,0,0,0.6);
+}
+
+/* ── LIGHT MODE ─────────────────────────────────────────── */
+/* Lunar Parchment: crisp editorial warmth.
+   Warm parchment grounds, indigo precision, amber warmth.
+   Every shadow meticulously calibrated. Painstaking restraint. */
+[data-theme="light"] {
+  --void:        #f2ede4;
+  --deep:        #e8e2d8;
+  --surface:     #faf8f4;
+  --panel:       #ffffff;
+  --panel-hi:    #f6f2eb;
+  --overlay:     rgba(30, 22, 12, 0.82);
+
+  --border:      #ddd6c8;
+  --border-hi:   #c4bbaa;
+  --border-glow: #b5aa98;
+
+  --plasma:      #2563eb;
+  --plasma-dim:  rgba(37, 99, 235, 0.07);
+  --plasma-mid:  rgba(37, 99, 235, 0.14);
+  --plasma-glow: rgba(37, 99, 235, 0.24);
+
+  --gold:        #b45309;
+  --gold-dim:    rgba(180, 83, 9, 0.08);
+  --gold-mid:    rgba(180, 83, 9, 0.16);
+  --gold-glow:   rgba(180, 83, 9, 0.26);
+
+  --mint:        #059669;
+  --mint-dim:    rgba(5, 150, 105, 0.07);
+  --mint-mid:    rgba(5, 150, 105, 0.15);
+  --mint-glow:   rgba(5, 150, 105, 0.24);
+
+  --ember:       #dc2626;
+  --ember-dim:   rgba(220, 38, 38, 0.07);
+  --ember-mid:   rgba(220, 38, 38, 0.15);
+
+  --text:        #1c1712;
+  --text-muted:  #78716c;
+  --text-ghost:  #c4b8a8;
+
+  --scanline-color: transparent;
+  --noise-opacity:  0.012;
+  --shadow-card:    0 1px 6px rgba(0,0,0,0.08), 0 2px 16px rgba(0,0,0,0.06);
+  --shadow-panel:   0 2px 24px rgba(0,0,0,0.10);
+}
+
+/* ── SHARED ─────────────────────────────────────────────── */
+:root {
+  --font-display: 'Big Shoulders Display', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+  --font-body:    'Outfit', sans-serif;
+
+  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;
+  --sp-4: 16px;  --sp-5: 20px;  --sp-6: 24px;
+  --sp-7: 28px;  --sp-8: 32px;  --sp-10: 40px;
+  --sp-12: 48px;
+
+  --sidebar-w:   220px;
+  --topbar-h:    56px;
+  --radius:      2px;
+  --radius-pill: 100px;
+
+  --t-fast:   0.15s ease;
+  --t-mid:    0.25s ease;
+  --t-slow:   0.40s cubic-bezier(0.4, 0, 0.2, 1);
+  --t-spring: 0.50s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --t-theme:  0.32s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Status Colors */
+  --success:      #00d97e;
+  --warning:      #f5c842;
+  --error:        #ff4d1a;
+  --info:         #00d4ff;
+
+  /* Mobile */
+  --mobile-nav-h: 60px;
+  --hamburger-w:  280px;
+}

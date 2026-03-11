@@ -1,0 +1,19 @@
+{
+  "name": "Life Control",
+  "short_name": "LIFE CTRL",
+  "description": "Sistema de Domínio Total — Kanban, Hábitos, Finanças, Metas, Aprendizado",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020408",
+  "theme_color": "#00d4ff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%23020408'/><circle cx='96' cy='96' r='40' fill='%2300d4ff' opacity='0.9'/><text x='96' y='105' text-anchor='middle' font-size='36' fill='%23020408' font-family='monospace' font-weight='bold'>LC</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["productivity", "lifestyle"],
+  "lang": "pt-BR"
+}
